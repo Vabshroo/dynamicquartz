@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:aop="http://www.springframework.org/schema/aop"
+       xmlns:context="http://www.springframework.org/schema/context"
+       xmlns:tx="http://www.springframework.org/schema/tx" xmlns:p="http://www.springframework.org/schema/p"
+       xmlns:util="http://www.springframework.org/schema/util"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+       http://www.springframework.org/schema/beans/spring-beans-4.0.xsd
+    http://www.springframework.org/schema/context
+    http://www.springframework.org/schema/context/spring-context-4.0.xsd">
+
+    <!-- 注入StdSchedulerFactory 注入这个类可以使用quartz.properties配置文件 -->
+    <bean id="stdSchedulerFactory" class="org.quartz.impl.StdSchedulerFactory" />
+
+    <!-- 注册QuartzJobFactory -->
+    <bean id="dynamicJobFactory" class="com.chenlei.factory.DynamicJobFactory" />
+
+    <!-- 主定时计划 -->
+    <bean id="managerTriggerBean" class="org.springframework.scheduling.quartz.SimpleTriggerFactoryBean">
+        <property name="jobDetail" ref="methodInvokingJobDetailFactoryBean" />
+        <property name="repeatInterval" value="10000"/>
+        <!-- 延迟启动 -->
+        <!--<property name="startDelay" value="1000"/>-->
+        <!-- 执行间隔：扫描间隔 -->
+        <!--<property name="repeatInterval" value="1"/>-->
+    </bean>
+
+    <!-- 注册SchedulerFactoryBean -->
+    <bean id="schedulerFactoryBean"
+          class="org.springframework.scheduling.quartz.SchedulerFactoryBean">
+        <property name="triggers">
+            <list>
+                <ref bean="managerTriggerBean" />
+            </list>
+        </property>
+    </bean>
+
+    <!-- jobDetail -->
+    <bean id="methodInvokingJobDetailFactoryBean" class="org.springframework.scheduling.quartz.MethodInvokingJobDetailFactoryBean">
+        <property name="targetObject" ref="dynamicJobFactory" />
+        <property name="targetMethod" value="scanJobs" />
+    </bean>
+
+    <!-- 扫表任务包 -->
+    <context:component-scan base-package="com.chenlei.task"/>
+
+</beans>
