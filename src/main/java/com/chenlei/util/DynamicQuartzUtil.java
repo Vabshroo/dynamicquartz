@@ -4,6 +4,7 @@ import com.chenlei.entity.ScheduleJob;
 import com.chenlei.task.DynamicTask1;
 import org.quartz.*;
 import org.quartz.impl.StdScheduler;
+import org.quartz.impl.matchers.GroupMatcher;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.support.ClassPathXmlApplicationContext;
 import org.springframework.scheduling.quartz.MethodInvokingJobDetailFactoryBean;
@@ -41,6 +42,7 @@ public class DynamicQuartzUtil {
             createScheduler(job);
         }//可以自定义注解在spring context加载完成后自动初始化，ApplicationContextAware,BeanFactoryPostProcessor
         System.out.println("初始化完毕");
+        System.out.println(allJobs());
 
     }
 
@@ -66,6 +68,7 @@ public class DynamicQuartzUtil {
             //set scheduler
             scheduler.scheduleJob(jobDetail, trigger);
             System.out.println("新增：" + job.getJobName());
+            System.out.println(allExecutingJobs());
 
         }
     }
@@ -94,5 +97,105 @@ public class DynamicQuartzUtil {
         }
         return context;
     }
+
+    /**
+     * 所有Schedule
+     * @return
+     * @throws SchedulerException
+     */
+    public static List<ScheduleJob> allJobs() throws SchedulerException {
+        GroupMatcher<JobKey> matcher = GroupMatcher.anyJobGroup();
+        Set<JobKey> jobKeys = scheduler.getJobKeys(matcher);
+        List<ScheduleJob> jobList = new ArrayList<ScheduleJob>();
+        for (JobKey jobKey : jobKeys) {
+            List<? extends Trigger> triggers = scheduler.getTriggersOfJob(jobKey);
+            for (Trigger trigger : triggers) {
+                ScheduleJob job = new ScheduleJob();
+                job.setJobName(jobKey.getName());
+                job.setJobGroup(jobKey.getGroup());
+                job.setDesc("触发器:" + trigger.getKey());
+                Trigger.TriggerState triggerState = scheduler.getTriggerState(trigger.getKey());
+                job.setTriggerState(triggerState.name());
+                if (trigger instanceof CronTrigger) {
+                    CronTrigger cronTrigger = (CronTrigger) trigger;
+                    String cronExpression = cronTrigger.getCronExpression();
+                    job.setCronExpression(cronExpression);
+                }
+                jobList.add(job);
+            }
+        }
+        return jobList;
+    }
+
+    /**
+     * 所有执行中的任务
+     * @return
+     * @throws SchedulerException
+     */
+    public static List<ScheduleJob> allExecutingJobs() throws SchedulerException {
+        List<JobExecutionContext> executingJobs = scheduler.getCurrentlyExecutingJobs();
+        List<ScheduleJob> jobList = new ArrayList<ScheduleJob>(executingJobs.size());
+        for (JobExecutionContext executingJob : executingJobs) {
+            ScheduleJob job = new ScheduleJob();
+            JobDetail jobDetail = executingJob.getJobDetail();
+            JobKey jobKey = jobDetail.getKey();
+            Trigger trigger = executingJob.getTrigger();
+            job.setJobName(jobKey.getName());
+            job.setJobGroup(jobKey.getGroup());
+            job.setDesc("触发器:" + trigger.getKey());
+            Trigger.TriggerState triggerState = scheduler.getTriggerState(trigger.getKey());
+            job.setTriggerState(triggerState.name());
+            if (trigger instanceof CronTrigger) {
+                CronTrigger cronTrigger = (CronTrigger) trigger;
+                String cronExpression = cronTrigger.getCronExpression();
+                job.setCronExpression(cronExpression);
+            }
+            jobList.add(job);
+        }
+        return jobList;
+    }
+
+    /**
+     * 暂停任务
+     * @param job
+     * @throws SchedulerException
+     */
+    public static void pauseJob(ScheduleJob job) throws SchedulerException {
+        JobKey jobKey = JobKey.jobKey(job.getJobName(), job.getJobGroup());
+        scheduler.pauseJob(jobKey);
+    }
+
+    /**
+     * 恢复任务
+     * @param job
+     * @throws SchedulerException
+     */
+    public static void resumeJob(ScheduleJob job) throws SchedulerException {
+        JobKey jobKey = JobKey.jobKey(job.getJobName(), job.getJobGroup());
+        scheduler.resumeJob(jobKey);
+    }
+
+    /**
+     * 删除任务
+     * @param job
+     * @throws SchedulerException
+     */
+    public static void deleteJob(ScheduleJob job) throws SchedulerException {
+        JobKey jobKey = JobKey.jobKey(job.getJobName(), job.getJobGroup());
+        scheduler.deleteJob(jobKey);
+        jobs.remove(job);
+    }
+
+    /**
+     * 立即执行任务
+     * @param job
+     * @throws SchedulerException
+     */
+    public void triggerJob(ScheduleJob job) throws SchedulerException {
+        JobKey jobKey = JobKey.jobKey(job.getJobName(), job.getJobGroup());
+        scheduler.triggerJob(jobKey);
+    }
+
+
 
 }

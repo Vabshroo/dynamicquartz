@@ -16,6 +16,7 @@ public class ScheduleJob implements Serializable {
     private String cronExpression;
     private String desc;
     private DynamicTask dynamicTask;
+    private String triggerState;
 
     public String getJobId() {
         return jobId;
@@ -71,6 +72,24 @@ public class ScheduleJob implements Serializable {
 
     public void setDynamicTask(DynamicTask dynamicTask) {
         this.dynamicTask = dynamicTask;
+    }
+
+    public String getTriggerState() {
+        return triggerState;
+    }
+
+    public void setTriggerState(String triggerState) {
+        this.triggerState = triggerState;
+    }
+
+    @Override
+    public int hashCode() {
+        return (jobName + jobGroup).hashCode();
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        return (jobName + jobGroup).equals(((ScheduleJob)obj).getJobName() + ((ScheduleJob)obj).getJobGroup());
     }
 
     public static class Builder{
